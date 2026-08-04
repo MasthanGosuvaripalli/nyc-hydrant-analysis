@@ -108,7 +108,27 @@ ORDER BY hydrant_count DESC;
 -- EPSG:4326 (degrees). EPSG:2263 (NY State Plane, feet) is standard for
 -- NYC; ST_Area returns square feet, so divide by ft²-per-km² to convert.
 -- NULLIF guards against divide-by-zero for any (near) zero-area polygon.
-
+with counts AS (
+	SELECT 
+	    n.ntaname,
+	    n.boroname,
+		n.geom,
+		ST_Area(ST_Transform(n.geom, 2263))/10763910.42 AS area_km2,
+	    COUNT(h.geom) AS hydrant_count       -- COUNT(h.geom), not COUNT(*), so unmatched → 0 not 1
+	FROM neighborhoods n
+	LEFT JOIN hydrants h
+	    ON ST_Contains(n.geom, h.geom)
+	GROUP BY n.ntaname, n.boroname ,n.geom
+)
+SELECT 
+	ntaname,
+	boroname,
+	geom,
+	hydrant_count,
+    ROUND(area_km2::numeric, 3) AS area_km2,
+    ROUND((hydrant_count / NULLIF(area_km2, 0))::numeric, 2) AS density_per_km2
+FROM counts
+ORDER BY density_per_km2 DESC NULLS LAST;
 
 -- ============================================================
 -- 5. BUFFER + UNION + INTERSECTION — % of each neighborhood within
