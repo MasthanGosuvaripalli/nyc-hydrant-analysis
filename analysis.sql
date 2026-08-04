@@ -90,7 +90,15 @@ WHERE NOT EXISTS (
 -- ============================================================
 -- LEFT JOIN (not JOIN) so neighborhoods with zero matched hydrants are
 -- kept in the result as a count of 0, instead of dropping out entirely.
-
+SELECT 
+    n.ntaname,
+    n.boroname,
+    COUNT(h.geom) AS hydrant_count       -- COUNT(h.geom), not COUNT(*), so unmatched → 0 not 1
+FROM neighborhoods n
+LEFT JOIN hydrants h
+    ON ST_Contains(n.geom, h.geom)
+GROUP BY n.ntaname, n.boroname
+ORDER BY hydrant_count DESC;
 
 
 -- ============================================================
