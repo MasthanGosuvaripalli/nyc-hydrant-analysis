@@ -60,8 +60,7 @@ ORDER BY ntaname;
 -- 2. SPATIAL JOIN — match each hydrant to the neighborhood that
 --    contains it, using ST_Contains(polygon, point)
 -- ============================================================
--- Both tables are already in EPSG:4326, so no ST_Transform is needed
--- for a plain point-in-polygon test.
+
 SELECT
     h.boro,
     h.latitude,
@@ -72,9 +71,7 @@ FROM hydrants h
 JOIN neighborhoods n
     ON ST_Contains(n.geom, h.geom);
 
--- Hydrants that don't fall inside any neighborhood polygon (e.g. piers,
--- causeways, or other unmapped land) — mirrors the `unmatched` check in
--- analysis.ipynb, so nothing silently disappears from the join.
+-- Hydrants that don't fall inside any neighborhood polygon 
 SELECT
     h.boro,
     h.latitude,
@@ -88,8 +85,7 @@ WHERE NOT EXISTS (
 -- ============================================================
 -- 3. AGGREGATE — hydrant count per neighborhood
 -- ============================================================
--- LEFT JOIN (not JOIN) so neighborhoods with zero matched hydrants are
--- kept in the result as a count of 0, instead of dropping out entirely.
+
 SELECT 
     n.ntaname,
     n.boroname,
@@ -104,10 +100,7 @@ ORDER BY hydrant_count DESC;
 -- ============================================================
 -- 4. NORMALIZE — hydrant density per km² (HEADLINE RESULT)
 -- ============================================================
--- Area must be computed in a projected, distance-accurate CRS rather than
--- EPSG:4326 (degrees). EPSG:2263 (NY State Plane, feet) is standard for
--- NYC; ST_Area returns square feet, so divide by ft²-per-km² to convert.
--- NULLIF guards against divide-by-zero for any (near) zero-area polygon.
+
 with counts AS (
 	SELECT 
 	    n.ntaname,
@@ -142,4 +135,27 @@ ORDER BY density_per_km2 DESC NULLS LAST;
 -- unioned against it (via the ST_Intersects join condition), rather than
 -- unioning all ~110k buffers up front — that keeps ST_Union's input per
 -- neighborhood small and lets the GIST index do the filtering.
+SELECT * FROM hydrants LIMIT 10;
+SELECT ST_SRID(geom) FROM hydrants LIMIT 1;
+SELECT ST_SRID(geom) FROM neighborhoods LIMIT 1;
 
+---------------------
+WITH 
+buffers AS (
+    SELECT ST_Buffer(ST_Transform(h.geom, 2263), 328.084) AS buffer_geom
+    FROM hydrants h
+),
+coverage AS (
+    SELECT ST_Union(buffer_geom) AS coverage_geom
+    FROM buffers
+)
+SELECT 
+    n.ntaname,
+    n.boroname,
+    ROUND(
+        (ST_Area(ST_Intersection(ST_Transform(n.geom, 2263), c.coverage_geom))
+         / NULLIF(ST_Area(ST_Transform(n.geom, 2263)), 0) * 100)::numeric,
+        2
+    ) AS coverage_pct
+FROM neighborhoods n, coverage c
+ORDER BY coverage_pct DESC;
