@@ -1,0 +1,14 @@
+services:
+  postgis:
+    image: postgis/postgis:18-3.6
+    environment:
+      POSTGRES_USER: masthan
+      POSTGRES_PASSWORD: masthan147
+      POSTGRES_DB: nyc
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql
+
+volumes:
+  postgis_data:
