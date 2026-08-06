@@ -6,6 +6,18 @@ within realistic firefighting reach of a hydrant. The same analysis is built twi
 (GeoPandas, for exploration and the interactive map) and once in PostGIS (SQL, for the heavier
 buffer/union/intersection coverage query).
 
+## Tech Stack
+
+| Layer | Tools |
+|---|---|
+| Analysis (Python) | GeoPandas 1.0.1, Shapely, Pyogrio, NumPy, Jupyter Notebook |
+| Interactive mapping | Folium / Leaflet (via `GeoDataFrame.explore()`), mapclassify (quantile classification) |
+| Spatial database | PostgreSQL + PostGIS 18-3.6 |
+| Database hosting | Docker / Docker Compose |
+| Data loading | GDAL `ogr2ogr` (GeoJSON → PostGIS) |
+| Database client | pgAdmin |
+| Source data | NYC Open Data (GeoJSON) |
+
 ## Datasets
 
 Both datasets are sourced from NYC Open Data and provided as GeoJSON in `data/raw/` (git-ignored —
@@ -133,3 +145,7 @@ directly from `data/raw/`.
 **SQL:** start the database (`docker compose up -d` from `docker/`), load both GeoJSON files into
 it with `ogr2ogr` (targeting tables `hydrants` and `neighborhoods`), then run `analysis.sql` section
 by section in `psql` or pgAdmin.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
